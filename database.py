@@ -14,13 +14,13 @@ def init_db():
 
     c.execute("""CREATE TABLE IF NOT EXISTS fighters (
             
-            fighterid INTEGER PRIMARY KEY,
+            fighterid TEXT PRIMARY KEY,
             name TEXT,
-            profileurl TEXT,
+            dob  TEXT,
             nickname TEXT,
             height REAL,
-            weightclass TEXT,
-            reach REAL,
+            weight INTEGER,
+            reach INTEGER,
             stance TEXT
             )""")
 
@@ -33,7 +33,7 @@ def init_db():
             losses INTEGER,
             draws INTEGER,
             nocontest INTEGER,
-            lastchecked TEXT,
+            lastChecked TEXT,
             SLpM REAL,
             StrAcc INTEGER,
             SApM REAL,
@@ -47,3 +47,4 @@ def init_db():
             )""")
 
     conn.commit()
+
