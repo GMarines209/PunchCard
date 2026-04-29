@@ -1,4 +1,5 @@
 import sqlite3 
+import datetime
 
 DB_FILENAME = 'fighters.db'
 
@@ -18,7 +19,7 @@ def init_db():
             name TEXT,
             dob  TEXT,
             nickname TEXT,
-            height REAL,
+            height INTEGER,
             weight INTEGER,
             reach INTEGER,
             stance TEXT
@@ -34,6 +35,7 @@ def init_db():
             draws INTEGER,
             nocontest INTEGER,
             lastChecked TEXT,
+            lastfight TEXT,
             SLpM REAL,
             StrAcc INTEGER,
             SApM REAL,
@@ -42,9 +44,35 @@ def init_db():
             TdAcc INTEGER,
             TdDef INTEGER,
             SubAvg REAL,
-            trackfighter INTEGER,
+            trackfighter TEXT,
             FOREIGN KEY(trackfighter) REFERENCES fighters(fighterid)
             )""")
 
     conn.commit()
 
+    conn.close()
+
+def save_complete_fighter(stats):
+    conn = get_connection()
+    c = conn.cursor()
+    insert_fighter(stats,c)
+    insert_stats(stats,c)
+
+    conn.commit()
+    conn.close()
+
+def insert_fighter(stats,c):
+     c.execute("INSERT OR IGNORE INTO fighters VALUES (:fighterid, :name, :dob, :nickname, :height, :weight, :reach, :stance)", stats)
+
+
+def insert_stats(stats,c):
+    stats["lastChecked"] = datetime.datetime.today().isoformat()
+    c.execute("""
+        INSERT OR REPLACE INTO fighter_stats (
+            wins, losses, draws, nocontest, lastChecked, lastfight, 
+            SLpM, StrAcc, SApM, StrDef, TdAvg, TdAcc, TdDef, SubAvg, trackfighter
+        ) VALUES (
+            :wins, :losses, :draws, :nocontest, :lastChecked, :lastfight, 
+            :SLpM, :StrAcc, :SApM, :StrDef, :TdAvg, :TdAcc, :TdDef, :SubAvg, :fighterid
+        )
+    """, stats)

@@ -25,7 +25,7 @@ def get_fighter_stats(url):
     messy_stats = {}
     clean_stats = {}
 
-    r = requests.get(url)
+    r = requests.get(url,timeout=10)
     soup = BeautifulSoup(r.content, 'html.parser')
 
     # fighter id
@@ -54,7 +54,6 @@ def get_fighter_stats(url):
     else:
         clean_stats["nocontest"] = 0
 
-
     # fighter nickname
     nickname = soup.select_one(".b-content__Nickname").text.strip()
     clean_stats["nickname"] = nickname
@@ -71,15 +70,23 @@ def get_fighter_stats(url):
         if messy_key in stats_map:
             clean_stats[stats_map[messy_key]] = messy_value
 
-    clean_stats = purify_stats(clean_stats)
+    # latest fight
+    latest_fight = soup.select_one(".b-fight-details__table-row td:nth-of-type(7) p:nth-of-type(2)").text.strip()
+    clean_stats["lastfight"] = latest_fight
 
-    
-    print(clean_stats)
+
+
+    clean_stats = purify_stats(clean_stats)
+    return clean_stats
 
 
         
 
 def purify_stats(clean_stats):
+
+    for key in clean_stats:
+        if clean_stats[key] == "--":
+            clean_stats[key] = None
 
     # removes % signs
     for val in clean_stats:
@@ -87,24 +94,35 @@ def purify_stats(clean_stats):
             x = clean_stats[val].replace("%","")
             clean_stats[val] = int(x)
 
-    # remove lbs from weight
-    weight_val = clean_stats["weight"]
-    clean_stats["weight"] = weight_val.replace("lbs.","")
+    # remove lbs from weight and cast
+    if clean_stats.get("weight") is not None:
+        weight_val = clean_stats["weight"]
+        clean_stats["weight"] = int(weight_val.replace("lbs.", "").strip())
+
 
     # store height as inches
-    height = clean_stats["height"].split()
-    feet = int(height[0].replace("'",""))
-    inches = int(height[1].replace('"', ""))
-    clean_stats["height"] = ((feet * 12) + (inches))
+    if clean_stats.get("height") is not None:
+        height = clean_stats["height"].split()
+        feet = int(height[0].replace("'", ""))
+        inches = int(height[1].replace('"', ""))
+        clean_stats["height"] = (feet * 12) + inches
 
     #remove " from reach
-    reach = clean_stats["reach"]
-    clean_stats["reach"] = reach .replace('"', "")
+    if clean_stats.get("reach") is not None:
+        reach = clean_stats["reach"]
+        clean_stats["reach"] = int(reach.replace('"', "").strip())
 
-    # convert date to ISO 8601
-    date = clean_stats["dob"]
-    date_format = "%b %d, %Y"
-    iso_date = datetime.datetime.strptime(date,date_format)
-    clean_stats["dob"] = iso_date.strftime("%Y-%m-%d")
+    # convert dob to ISO 8601
+    if clean_stats.get("dob") is not None:
+        date = clean_stats["dob"]
+        date_format = "%b %d, %Y"
+        iso_date = datetime.datetime.strptime(date, date_format)
+        clean_stats["dob"] = iso_date.strftime("%Y-%m-%d")
+
+    if clean_stats.get("lastfight") is not None:
+        date = clean_stats["lastfight"]
+        date_format = "%b. %d, %Y"
+        iso_date = datetime.datetime.strptime(date, date_format)
+        clean_stats["lastfight"] = iso_date.strftime("%Y-%m-%d")
 
     return clean_stats
