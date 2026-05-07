@@ -1,6 +1,7 @@
 import scraper
 import database
 import spider
+import cache
 
 def main():
     print("Initializing database...")
@@ -13,6 +14,8 @@ def main():
     c.execute("SELECT COUNT(*) FROM fighters")
     if c.fetchone()[0] == 0:
         full_scrape()
+    
+    print(cache.get_stats("aaron pico"))
     
 
     conn.close()

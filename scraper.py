@@ -2,7 +2,6 @@ from bs4 import BeautifulSoup
 import requests
 import datetime
 
-
 stats_map = {
     "Height:": "height",
     "Weight:": "weight",
@@ -78,9 +77,6 @@ def get_fighter_stats(url):
 
     clean_stats = purify_stats(clean_stats)
     return clean_stats
-
-
-        
 
 def purify_stats(clean_stats):
 

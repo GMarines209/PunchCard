@@ -12,6 +12,7 @@ def init_db():
 
     conn = get_connection()
     c = conn.cursor()
+    conn.row_factory = sqlite3.Row
 
     c.execute("""CREATE TABLE IF NOT EXISTS fighters (
             
