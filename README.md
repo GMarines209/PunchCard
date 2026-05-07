@@ -44,8 +44,8 @@ displayed
 
 ### Fighter stats pipeline
 - A spider crawls on the ufcstats.com site and searchs alphabeticaly , cataloging each profile link and seeds a local SQLite database 
-- For a individual figher lookup, a cache is called to check for the freshness of the data (is this fighters last fight after when they were last scraped)
-it then rescrapes the data it deems to be out of date.
+- Fighter data is kept up to date using a (self configured) cron job with -u arg to get the stats of each fighter
+who participated in the most recently compelted fight 
 - Fighter portraits are fetched from the UFC website and downscaled server side before being served to the pi
 
 ### Live stats pipeline
@@ -53,7 +53,7 @@ it then rescrapes the data it deems to be out of date.
 - Polls the UFC's cloudfront CDN for round by round results 
 
 ### Caching
-Three cases handled on every lookup:
+Two cases handled on every lookup:
 - **Cold miss** — fighter not in database → targeted scrape of their letter page → insert → return
 - **Warm hit** — data is fresh → return from SQLite instantly
 
