@@ -1,7 +1,6 @@
 import database
 import scraper
 import requests
-from datetime import datetime
 from bs4 import BeautifulSoup
 
 
@@ -11,16 +10,12 @@ def get_stats(fighter_name):
     fighter_name = normalize_text(fighter_name)
     conn = database.get_connection()
     c = conn.cursor()
+    
 
     c.execute("""SELECT * FROM fighters 
               INNER JOIN fighter_stats ON fighters.fighterid = fighter_stats.trackfighter
               WHERE LOWER(fighters.name) = ? """,(fighter_name,))
     stats= c.fetchone()
-
-    # stale check
-    checked_date = datetime.datetime.fromisoformat(stats['lastchecked'])
-    # curr_date = datetime.now('%b %d, %Y')
-    # print(checked_date,curr_date)
 
     # (cold miss) if this figher isnt in the database at all search for them by name
     # then call scraper and add them to the db
@@ -30,7 +25,8 @@ def get_stats(fighter_name):
             return None
         stats = scraper.get_fighter_stats(url)
         database.save_complete_fighter(stats)
-    
+
+
     return stats
 
 def find_by_name(name):

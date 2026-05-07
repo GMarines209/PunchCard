@@ -56,7 +56,6 @@ it then rescrapes the data it deems to be out of date.
 Three cases handled on every lookup:
 - **Cold miss** — fighter not in database → targeted scrape of their letter page → insert → return
 - **Warm hit** — data is fresh → return from SQLite instantly
-- **Stale hit** — fighter has fought since last check → re-scrape profile → update database → return
 
 
 ## Setup 

@@ -1,22 +1,40 @@
 import scraper
 import database
 import spider
-import cache
+import argparse
 
 def main():
+
+    parser = argparse.ArgumentParser()
+    parser.add_argument("-u","--update",help="run fighter scraping for the most recent fight",action='store_true')
+    args = parser.parse_args()
+
     print("Initializing database...")
     database.init_db()
     conn = database.get_connection()
     c = conn.cursor()
 
     # if the db is empty start up a full scrape
-    # this takes like 3 or so hours so have fun!
     c.execute("SELECT COUNT(*) FROM fighters")
     if c.fetchone()[0] == 0:
+        print("database is empty... starting complete fighter catalog\n")
+        print("this may take 2-4 hours. Have fun!")
         full_scrape()
-    
-    print(cache.get_stats("aaron pico"))
-    
+
+    # if -u flag in called scrape recent fight stats
+    if(args.update):
+        for link in spider.event_scan():
+            try:
+                clean_stats = scraper.get_fighter_stats(link)
+                
+                fighter_name = clean_stats.get("name", "Unknown Fighter")
+                print(f"    -> Updating stats for {fighter_name}")
+                
+                database.save_complete_fighter(clean_stats)
+            except Exception as e:
+                # error handeling stuff
+                print(f"    -> [!] FAILED to scrape {link}. Error: {e}")
+                continue # skips the rest of this loop and moves to the next URL
 
     conn.close()
 
@@ -31,7 +49,6 @@ def full_scrape():
         print(f"[{count}] Fetching: {link}")
         count += 1
         try:
-            # The Danger Zone (Things that rely on the internet)
             clean_stats = scraper.get_fighter_stats(link)
             
             fighter_name = clean_stats.get("name", "Unknown Fighter")

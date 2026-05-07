@@ -18,7 +18,6 @@ stats_map = {
     "Sub. Avg.:" : "SubAvg"   
 }
 
-
 def get_fighter_stats(url):
 
     messy_stats = {}
