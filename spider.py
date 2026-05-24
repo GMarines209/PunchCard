@@ -3,6 +3,7 @@ from bs4 import BeautifulSoup
 import requests
 import string
 import time
+from playwright.sync_api import sync_playwright
 
 
 def alpha_crawl():
@@ -16,18 +17,61 @@ def alpha_crawl():
             yield link['href']
             time.sleep(random.uniform(1.5, 3.5))
 
-
 def event_scan():
-    r = requests.get("http://ufcstats.com/statistics/events/completed", timeout=10)
-    soup = BeautifulSoup(r.content, 'html.parser')
 
-    # gets the latest completed event url to keep up to date on the fighters stats
-    event_tag = soup.select_one(".b-statistics__table-row:nth-child(3) a")
-    event_tag = event_tag['href']
+    with sync_playwright() as p:
+        # launch chromium
+        browser = p.chromium.launch(headless=True)
+        page = browser.new_page()
 
-    r = requests.get(event_tag, timeout=10)
-    soup = BeautifulSoup(r.content, 'html.parser')
+        print("DEBUG: Browser launched. Waiting for Cloudflare...")
+        page.goto("http://ufcstats.com/statistics/events/completed")
+        
+        try:
+            page.wait_for_selector(".b-statistics__table-row", timeout=15000)
+        except Exception as e:
+            print(f"DEBUG: Timeout waiting for Cloudflare to pass. {e}")
+            browser.close()
+            return
 
-    urls = soup.select("a[href*='fighter-details']")
-    for link in urls:
-        yield link['href']
+        # Extract loaded HTML from the browser
+        html = page.content()
+        soup = BeautifulSoup(html, 'html.parser')
+
+        title = soup.title.text.strip() if soup.title else "No Title Found"
+        print(f"DEBUG: The page title is: {title}")
+
+        # get the latest completed event url
+        event_tags = soup.select("a[href*='event-details']")
+        
+        if len(event_tags) > 1:
+            event_tag = event_tags[1]['href']
+        else:
+            print("DEBUG: Failed to find event link.")
+            browser.close()
+            return
+
+        print(f"DEBUG: Successfully found event link: {event_tag}")
+
+        # Navigate to the specific event page
+        page.goto(event_tag)
+        
+        try:
+            page.wait_for_selector("a[href*='fighter-details']", timeout=15000)
+        except Exception as e:
+            print("DEBUG: Timeout waiting for fighters to load.")
+            browser.close()
+            return
+
+        html = page.content()
+        soup = BeautifulSoup(html, 'html.parser')
+
+        urls = soup.select("a[href*='fighter-details']")        
+        fighter_links = [link['href'] for link in urls]
+        
+        browser.close()
+
+    for link in fighter_links:
+        yield link
+
+

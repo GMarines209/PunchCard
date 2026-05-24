@@ -2,6 +2,7 @@ import scraper
 import database
 import spider
 import argparse
+import api
 
 def main():
 
@@ -35,8 +36,8 @@ def main():
                 # error handeling stuff
                 print(f"    -> [!] FAILED to scrape {link}. Error: {e}")
                 continue # skips the rest of this loop and moves to the next URL
-
     conn.close()
+    
 
 
 def full_scrape():
@@ -63,3 +64,6 @@ def full_scrape():
 
 if __name__ == "__main__":
     main()
+
+
+api.app.run()

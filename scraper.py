@@ -1,6 +1,10 @@
 from bs4 import BeautifulSoup
-import requests
 import datetime
+from playwright.sync_api import sync_playwright
+import nest_asyncio
+
+# stops playwright from fighting with Flask for the event loop
+nest_asyncio.apply()
 
 stats_map = {
     "Height:": "height",
@@ -18,50 +22,78 @@ stats_map = {
     "Sub. Avg.:" : "SubAvg"   
 }
 
+def safe_extract(soup, css_selector):
+    # tries to extract text, used to fix 'has no attribute 'text' errors . Returns 'N/A' if the HTML tag doesn't exist
+    # replaces that manual stripping i was doing per stat
+    element = soup.select_one(css_selector)
+    if element:
+        return element.text.strip()
+    return "N/A"
+
 def get_fighter_stats(url):
-
-    messy_stats = {}
     clean_stats = {}
+    messy_stats = {}
 
-    r = requests.get(url,timeout=10)
-    soup = BeautifulSoup(r.content, 'html.parser')
-
-    # fighter id
     url_array = url.split("/")
     fighter_id = url_array[-1]
     clean_stats["fighterid"] = fighter_id
 
+    with sync_playwright() as p:
+        browser = p.chromium.launch(headless=True)
+        page = browser.new_page()
+        page.goto(url)
+        
+        try:
+            # Wait for the fighter name to pass cloudflare 
+            page.wait_for_selector(".b-content__title-highlight", timeout=15000)
+        except Exception:
+            print(f"DEBUG: Timeout/Blocked on {url}")
+            browser.close()
+            return None 
+
+        html = page.content()
+        soup = BeautifulSoup(html, 'html.parser')
+        browser.close()
+
+
     # fighter name
-    name = soup.select_one(".b-content__title-highlight").text.strip()
+    name = safe_extract(soup, ".b-content__title-highlight")
+    if name == "N/A":
+        return None # Abort if page loaded but name is missing for some reason
     clean_stats["name"] = name
     
     # fighter record
-    record = soup.select_one(".b-content__title-record")
-    record_text = record.text.replace("Record: ", "").strip()
+    record_text = safe_extract(soup, ".b-content__title-record").replace("Record: ", "").strip()
+    if record_text != "N/A" and record_text:
+        record_arr = record_text.split('(')
+        
+        try:
+            wins, losses, draws = record_arr[0].strip().split('-')
+            clean_stats["wins"] = int(wins)
+            clean_stats["losses"] = int(losses)
+            clean_stats["draws"] = int(draws)
+        except Exception:
+            clean_stats["wins"], clean_stats["losses"], clean_stats["draws"] = 0, 0, 0 # default to a 0,0,0 record if theres a sort of error
 
-    record_arr = record_text.split('(')
-
-    wins, losses, draws = record_arr[0].strip().split('-')
-    clean_stats["wins"] = int(wins)
-    clean_stats["losses"] = int(losses)
-    clean_stats["draws"] = int(draws)
-
-    if len(record_arr) == 2:
-        nocontest_str = record_arr[1].replace(" NC)", "")
-        clean_stats["nocontest"] = int(nocontest_str)
+        if len(record_arr) == 2:
+            nocontest_str = record_arr[1].replace(" NC)", "")
+            clean_stats["nocontest"] = int(nocontest_str)
+        else:
+            clean_stats["nocontest"] = 0
     else:
-        clean_stats["nocontest"] = 0
+         clean_stats["wins"], clean_stats["losses"], clean_stats["draws"], clean_stats["nocontest"] = 0, 0, 0, 0
 
     # fighter nickname
-    nickname = soup.select_one(".b-content__Nickname").text.strip()
-    clean_stats["nickname"] = nickname
+    clean_stats["nickname"] = safe_extract(soup, ".b-content__Nickname")
 
     # gets all the stats by looping through the lists and adding them to a dict
     for ul in soup.findAll("ul","b-list__box-list"):
         for li in ul.findAll("li"):
-            tag = li.find('i').text.strip()
-            value = li.get_text().replace(tag,'').strip()
-            messy_stats.update({tag:value})
+            i_tag = li.find('i')
+            if i_tag: # Safety check inside the loop
+                tag = i_tag.text.strip()
+                value = li.get_text().replace(tag,'').strip()
+                messy_stats.update({tag:value})
 
     # fix up the key names and save to clean_stats
     for messy_key, messy_value in messy_stats.items():
@@ -69,10 +101,7 @@ def get_fighter_stats(url):
             clean_stats[stats_map[messy_key]] = messy_value
 
     # latest fight
-    latest_fight = soup.select_one(".b-fight-details__table-row td:nth-of-type(7) p:nth-of-type(2)").text.strip()
-    clean_stats["lastfight"] = latest_fight
-
-
+    clean_stats["lastfight"] = safe_extract(soup, ".b-fight-details__table-row td:nth-of-type(7) p:nth-of-type(2)")
 
     clean_stats = purify_stats(clean_stats)
     return clean_stats
@@ -80,44 +109,61 @@ def get_fighter_stats(url):
 def purify_stats(clean_stats):
 
     for key in clean_stats:
-        if clean_stats[key] == "--":
+        if clean_stats[key] == "--" or clean_stats[key] == "N/A":
             clean_stats[key] = None
 
     # removes % signs
     for val in clean_stats:
         if isinstance(clean_stats[val], str) and "%" in clean_stats[val]:
             x = clean_stats[val].replace("%","")
-            clean_stats[val] = int(x)
+            try:
+                clean_stats[val] = int(x)
+            except Exception:
+                clean_stats[val] = None
 
     # remove lbs from weight and cast
     if clean_stats.get("weight") is not None:
-        weight_val = clean_stats["weight"]
-        clean_stats["weight"] = int(weight_val.replace("lbs.", "").strip())
-
+        weight_val = str(clean_stats["weight"])
+        try:
+            clean_stats["weight"] = int(weight_val.replace("lbs.", "").strip())
+        except Exception:
+            clean_stats["weight"] = None
 
     # store height as inches
     if clean_stats.get("height") is not None:
-        height = clean_stats["height"].split()
-        feet = int(height[0].replace("'", ""))
-        inches = int(height[1].replace('"', ""))
-        clean_stats["height"] = (feet * 12) + inches
+        try:
+            height = clean_stats["height"].split()
+            feet = int(height[0].replace("'", ""))
+            inches = int(height[1].replace('"', ""))
+            clean_stats["height"] = (feet * 12) + inches
+        except Exception:
+            clean_stats["height"] = None
 
     #remove " from reach
     if clean_stats.get("reach") is not None:
-        reach = clean_stats["reach"]
-        clean_stats["reach"] = int(reach.replace('"', "").strip())
+        reach = str(clean_stats["reach"])
+        try:
+            clean_stats["reach"] = int(reach.replace('"', "").strip())
+        except Exception:
+            clean_stats["reach"] = None
 
     # convert dob to ISO 8601
     if clean_stats.get("dob") is not None:
         date = clean_stats["dob"]
         date_format = "%b %d, %Y"
-        iso_date = datetime.datetime.strptime(date, date_format)
-        clean_stats["dob"] = iso_date.strftime("%Y-%m-%d")
+        try:
+            iso_date = datetime.datetime.strptime(date, date_format)
+            clean_stats["dob"] = iso_date.strftime("%Y-%m-%d")
+        except Exception:
+            clean_stats["dob"] = None
 
     if clean_stats.get("lastfight") is not None:
         date = clean_stats["lastfight"]
         date_format = "%b. %d, %Y"
-        iso_date = datetime.datetime.strptime(date, date_format)
-        clean_stats["lastfight"] = iso_date.strftime("%Y-%m-%d")
+        try:
+            iso_date = datetime.datetime.strptime(date, date_format)
+            clean_stats["lastfight"] = iso_date.strftime("%Y-%m-%d")
+        except Exception:
+            clean_stats["lastfight"] = None
 
     return clean_stats

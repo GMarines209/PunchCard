@@ -5,28 +5,8 @@ from bs4 import BeautifulSoup
 
 
 
-def get_stats(fighter_name):
-
-    fighter_name = normalize_text(fighter_name)
-    conn = database.get_connection()
-    c = conn.cursor()
-    
-
-    c.execute("""SELECT * FROM fighters 
-              INNER JOIN fighter_stats ON fighters.fighterid = fighter_stats.trackfighter
-              WHERE LOWER(fighters.name) = ? """,(fighter_name,))
-    stats= c.fetchone()
-
-    # (cold miss) if this figher isnt in the database at all search for them by name
-    # then call scraper and add them to the db
-    if(stats == None):
-        url = find_by_name(fighter_name)
-        if(url == None):
-            return None
-        stats = scraper.get_fighter_stats(url)
-        database.save_complete_fighter(stats)
-
-
+def get_stats(fighter_id):
+    stats = database.get_fighter_by_id(fighter_id)
     return stats
 
 def find_by_name(name):
@@ -49,6 +29,22 @@ def find_by_name(name):
             return first['href']
 
     return None
+
+def handle_search(fighter_name):
+
+    names = database.search_fighters(fighter_name)
+
+    # (cold miss) if this figher isnt in the database at all search for them by name
+    # then call scraper and add them to the db
+    if(names == []):
+        url = find_by_name(fighter_name)
+        if(url == None):
+            return []
+        stats = scraper.get_fighter_stats(url)
+        database.save_complete_fighter(stats)
+        names = database.search_fighters(fighter_name)
+
+    return names
 
 def normalize_text(name):
     name = name.lower().strip()

@@ -8,7 +8,6 @@ def get_connection():
     conn.row_factory = sqlite3.Row
     return conn
 
-
 def init_db():
 
     conn = get_connection()
@@ -45,7 +44,7 @@ def init_db():
             TdAcc INTEGER,
             TdDef INTEGER,
             SubAvg REAL,
-            trackfighter TEXT,
+            trackfighter TEXT UNIQUE,
             FOREIGN KEY(trackfighter) REFERENCES fighters(fighterid)
             )""")
 
@@ -62,9 +61,32 @@ def save_complete_fighter(stats):
     conn.commit()
     conn.close()
 
+def get_fighter_by_id(fighter_id):
+
+    conn = get_connection()
+    c = conn.cursor()
+
+    c.execute("""SELECT * FROM fighters 
+              INNER JOIN fighter_stats ON fighters.fighterid = fighter_stats.trackfighter
+              WHERE LOWER(fighters.fighterid) = ? """,(fighter_id,))
+    stats = c.fetchone()
+    
+    return dict(stats)
+
+def search_fighters(fighter_name):
+    conn = get_connection()
+    c = conn.cursor()
+
+    search_term = f"%{fighter_name.lower()}%"
+    c.execute("""SELECT * FROM fighters 
+              INNER JOIN fighter_stats ON fighters.fighterid = fighter_stats.trackfighter
+              WHERE LOWER(fighters.name) LIKE ? """,(search_term,))
+    names = c.fetchall()
+
+    return [dict(row) for row in names]
+
 def insert_fighter(stats,c):
      c.execute("INSERT OR IGNORE INTO fighters VALUES (:fighterid, :name, :dob, :nickname, :height, :weight, :reach, :stance)", stats)
-
 
 def insert_stats(stats,c):
     stats["lastChecked"] = datetime.datetime.today().isoformat()
