@@ -62,15 +62,14 @@ def save_complete_fighter(stats):
     conn.close()
 
 def get_fighter_by_id(fighter_id):
-
     conn = get_connection()
     c = conn.cursor()
-
     c.execute("""SELECT * FROM fighters 
               INNER JOIN fighter_stats ON fighters.fighterid = fighter_stats.trackfighter
-              WHERE LOWER(fighters.fighterid) = ? """,(fighter_id,))
+              WHERE fighters.fighterid = ? """, (fighter_id,))
     stats = c.fetchone()
-    
+    if stats is None:
+        return None
     return dict(stats)
 
 def search_fighters(fighter_name):

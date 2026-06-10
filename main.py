@@ -64,6 +64,7 @@ def full_scrape():
 
 if __name__ == "__main__":
     main()
+    api.app.run()
 
 
-api.app.run()
+

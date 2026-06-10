@@ -4,6 +4,7 @@ import requests
 import string
 import time
 from playwright.sync_api import sync_playwright
+import utils
 
 
 def alpha_crawl():
@@ -73,5 +74,26 @@ def event_scan():
 
     for link in fighter_links:
         yield link
+
+def find_by_name(name):
+    # EDGE CASE: if a figher only has a first or last name 
+
+    # ufc site sorts by last name so this gets first letter of last name
+    name_arr = name.split(' ')
+    first_letter = name_arr[-1][0]
+    
+
+    r = requests.get(f"http://ufcstats.com/statistics/fighters?char={first_letter}&page=all")
+    soup = BeautifulSoup(r.content, 'html.parser')
+
+    first_name_url = soup.select(".b-statistics__table-row td:nth-child(1) a")
+    last_name_url = soup.select(".b-statistics__table-row td:nth-child(2) a")
+
+    for first,last in zip(first_name_url,last_name_url):
+        loop_name = (first.text.strip() + ' ' + last.text.strip())
+        if(utils.normalize_text(name) == utils.normalize_text(loop_name)):
+            return first['href']
+
+    return None
 
 

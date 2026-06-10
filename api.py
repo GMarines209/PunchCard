@@ -1,8 +1,6 @@
 from flask import Flask, jsonify, request
 from flask import render_template
-import cache, database, spider, scraper
-
-active_fighter = None
+import cache
 
 app = Flask(__name__)
 
@@ -10,25 +8,13 @@ app = Flask(__name__)
 def index():
     return render_template('index.html')
 
-@app.route("/set_active")
-def set_active():
-    global active_fighter
-
-    fighter_id = request.args.get("id")
-    if not fighter_id:
-        return jsonify({"error": "Missing 'id' parameter"}), 400
-    
-    active_fighter = fighter_id
-    return jsonify({"success": True, "now_displaying": active_fighter})
-
-@app.route("/current")
-def current():
-    return jsonify({"active_fighter_id": active_fighter})
-
 @app.route("/live") 
 def live_results():
-    print("TO be implemented")
+    return
 
+@app.route("/upcomming")
+def upcomming():
+    return
 
 @app.route("/fighter")
 def fighter_stats():
@@ -54,6 +40,3 @@ def fighters_list():
         return jsonify({"error": "No fighter URL found"}), 404
 
     return jsonify(names)
-
-
-#/fighter?name=Jon+Jonesall 

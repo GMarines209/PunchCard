@@ -23,7 +23,26 @@
     </main>
 
     <script>
-        // TBD
+        
+        element = document.getElementById("search-btn")
+        element.addEventListener("click", search);
+
+        function search(){
+            name = document.getElementById("search-input").value
+            console.log("Searching for", name)
+
+            path = `http://127.0.0.1:5000/fighters?name=${name}`
+            fetch(path) // get the path
+            .then(response => response.json()) // then get the response json
+            .then(data => {
+                console.log(data) // print that response json to console
+            })
+
+            
+
+
+        }
+        
     </script>
 </body>
 </html>
