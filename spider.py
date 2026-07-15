@@ -5,18 +5,38 @@ import string
 import time
 from playwright.sync_api import sync_playwright
 import utils
+import nest_asyncio
+
+nest_asyncio.apply()
 
 
 def alpha_crawl():
     alpha = string.ascii_lowercase
-    for char in alpha:
-        r = requests.get(f"http://ufcstats.com/statistics/fighters?char={char}&page=all",timeout=10)
-        soup = BeautifulSoup(r.content, 'html.parser')
+    with sync_playwright() as p:
+        # launch chromium
+        browser = p.chromium.launch(headless=True)
+        page = browser.new_page()
 
-        urls = soup.select(".b-statistics__table-row td:nth-child(1) a")
-        for link in urls:
-            yield link['href']
-            time.sleep(random.uniform(1.5, 3.5))
+        print("DEBUG: Browser launched. Waiting for Cloudflare...")
+        fighter_links = []
+        for char in alpha:
+            page.goto(f"http://ufcstats.com/statistics/fighters?char={char}&page=all")
+            try:
+                page.wait_for_selector(".b-statistics__table-row td:nth-child(1) a", timeout=15000)
+            except Exception as e:
+                print(f"DEBUG: Timeout waiting for Cloudflare to pass. {e}")
+                continue
+            
+            html = page.content()
+            soup = BeautifulSoup(html, 'html.parser')
+            
+            urls = soup.select(".b-statistics__table-row td:nth-child(1) a")
+            fighter_links += [link['href'] for link in urls]
+
+        browser.close()
+
+    for link in fighter_links:
+        yield link
 
 def event_scan():
 

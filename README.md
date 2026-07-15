@@ -76,9 +76,8 @@ Two cases handled on every lookup:
 | ------------- | ------------- |-------------|
 | GET  | /  | Fighter search web UI |
 | GET  | /fighters?name={name}  | Search fighters by name, returns a list|
-| GET  | /set_active?id={fighterid} | Set the currently displayed fighter |
 | GET  | /current  | Returns active fighter ID (Pi polls this) |
-| GET  | /fighter?id={fighterid}  | Full stats for a specific fighter |
+| GET  | /fighter?id={fighterid}  | Full stats for a specific fighter & sets the currently displayed fighter|
 | GET  | /live  | Current live fight round stats |
 | GET  | /upcoming  | Next event fight card |
 
