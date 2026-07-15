@@ -1,4 +1,4 @@
-import scraper, utils, database
+import scraper, spider, database
 import requests
 from bs4 import BeautifulSoup
 
@@ -15,7 +15,7 @@ def handle_search(fighter_name):
     # (cold miss) if this figher isnt in the database at all search for them by name
     # then call scraper and add them to the db
     if(names == []):
-        url = utils.find_by_name(fighter_name)
+        url = spider.find_by_name(fighter_name)
         if(url == None):
             return []
         stats = scraper.get_fighter_stats(url)
