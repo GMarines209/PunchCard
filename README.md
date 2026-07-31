@@ -86,5 +86,5 @@ Two cases handled on every lookup:
 ## Setup 
 
 ### Prerequisites
-* Python 3.10+
-* Raspberry Pi Zero 2Ww
+* pip install -r requirements.txt
+* playwright install chromium

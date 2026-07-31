@@ -1,8 +1,5 @@
-import random
 from bs4 import BeautifulSoup
-import requests
 import string
-import time
 from playwright.sync_api import sync_playwright
 import utils
 import nest_asyncio
@@ -101,19 +98,32 @@ def find_by_name(name):
     # ufc site sorts by last name so this gets first letter of last name
     name_arr = name.split(' ')
     first_letter = name_arr[-1][0]
+    match = None
+    with sync_playwright() as p:
+            # launch chromium
+            browser = p.chromium.launch(headless=True)
+            page = browser.new_page()
     
+            print("DEBUG: Browser launched. Waiting for Cloudflare...")            
 
-    r = requests.get(f"http://ufcstats.com/statistics/fighters?char={first_letter}&page=all")
-    soup = BeautifulSoup(r.content, 'html.parser')
+            page.goto(f"http://ufcstats.com/statistics/fighters?char={first_letter}&page=all")
+            try:
+                page.wait_for_selector(".b-statistics__table-row td:nth-child(1) a", timeout=15000)
+            except Exception as e:
+                print(f"DEBUG: Timeout waiting for Cloudflare to pass. {e}")
 
-    first_name_url = soup.select(".b-statistics__table-row td:nth-child(1) a")
-    last_name_url = soup.select(".b-statistics__table-row td:nth-child(2) a")
+            html = page.content()
+            soup = BeautifulSoup(html, 'html.parser')
 
-    for first,last in zip(first_name_url,last_name_url):
-        loop_name = (first.text.strip() + ' ' + last.text.strip())
-        if(utils.normalize_text(name) == utils.normalize_text(loop_name)):
-            return first['href']
+            first_name_url = soup.select(".b-statistics__table-row td:nth-child(1) a")
+            last_name_url = soup.select(".b-statistics__table-row td:nth-child(2) a")
 
-    return None
+            for first,last in zip(first_name_url,last_name_url):
+                    loop_name = (first.text.strip() + ' ' + last.text.strip())
+                    if(utils.normalize_text(name) == utils.normalize_text(loop_name)):
+                        match =  first['href']
+                        break
+            browser.close()
+    return match
 
 
