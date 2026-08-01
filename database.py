@@ -70,6 +70,8 @@ def get_fighter_by_id(fighter_id):
     stats = c.fetchone()
     if stats is None:
         return None
+    
+    conn.close()
     return dict(stats)
 
 def search_fighters(fighter_name):
@@ -82,7 +84,18 @@ def search_fighters(fighter_name):
               WHERE LOWER(fighters.name) LIKE ? """,(search_term,))
     names = c.fetchall()
 
+    conn.close()
     return [dict(row) for row in names]
+
+# used by main to get all fighter names and id's for download_portrait
+def get_all_fighters():
+    conn = get_connection()
+    c = conn.cursor()
+    c.execute("""SELECT * FROM fighters""")
+    stats = c.fetchall()
+
+    conn.close()
+    return [dict(row) for row in stats]
 
 def insert_fighter(stats,c):
      c.execute("INSERT OR IGNORE INTO fighters VALUES (:fighterid, :name, :dob, :nickname, :height, :weight, :reach, :stance)", stats)

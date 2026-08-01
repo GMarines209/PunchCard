@@ -1,26 +1,25 @@
-# PunchCard a ufc stats scraper and display
+# PunchCard - a ufc stats scraper and display
 
-This project is a self-hoseted UFC stats display built on a Raspberry Pi Zero 2W and a 2.8" TFT screen. 
-With python backend the project scrapes all historical fighter data and live event result,served via a REST api
-onto a small color display.
+This project is a self-hosted UFC stats display built on a Raspberry Pi Zero 2W and a 2.8" TFT screen.
+The python backend scrapes all historical fighter data plus live event results, serves it through a REST API,
+and renders it onto a small color display. You pick a fighter from a web page on your phone and it shows up on the screen.
 
-> 🚧 **This is currently in active development** — backend pipeline complete, Pi client & live stats in progress
+> 🚧 **This is currently in active development** — backend pipeline is done, image download works, Pi client & live stats are in progress
 
 ## Features
 
-**Fighter stats mode** - This mode allows you to search any ufc fighter by name and have their information (portrait, record, and career stats)
-displayed
+**Fighter stats mode** - search any UFC fighter by name and have their info (portrait, record, and career stats) shown on the display.
 
-**Live fight mode** - during active UFC events, the display updates round by round with live stats for both fighters pulled directly from UFC's CDN.
+**Live fight mode** - during active UFC events the display updates round by round with live stats for both fighters, pulled straight from UFC's CDN.
 
-**Upcoming Card Mode** — when no fight is live, the display scrolls the upcoming event's full fight card.
+**Upcoming card mode** - when nothing is live, the display falls back to the upcoming event's fight card.
 
 ## Demo
 
 > Images and everything will come when i get the hardware going :grinning:
 
 ## Architecture
- 
+
 ```
 [ufc.com/events]         [ufcstats.com]        [UFC Cloudfront CDN]
       ↓ scrape                ↓ scrape               ↓ GET (no auth)
@@ -30,7 +29,7 @@ displayed
            [Python Backend — Docker on home server]
                                 ↓
                          [SQLite Database]
-                       (4065+ fighters cached)
+                       (4000+ fighters cached)
                                 ↓
                          [REST API (Flask)]
                                 ↓
@@ -44,47 +43,65 @@ displayed
 ## User Flow
 
 1. Open the web UI on any browser on your local network
-2. Search a fighter by name — matching results appear with identifying info (nickname, record, weight class)
-3. Select the correct fighter, their ID is set as active on the server
-4. The Pi polls the server every ~5 seconds, detects the change, fetches full stats and displays them
-5. Switch to Live mode during UFC events for round-by-round updates
-
+2. Search a fighter by name — matching results show up with identifying info (nickname, record, weight class)
+3. Pick the right one, their ID gets set as active on the server
+4. The Pi polls the server every ~5 seconds, notices the change, grabs the full stats and displays them
+5. Switch to live mode during UFC events for round by round updates
 
 ## How it works
 
 ### Fighter stats pipeline
-- A spider crawls on the ufcstats.com site and searchs alphabeticaly , cataloging each profile link and seeds a local SQLite database 
-- On a name search, the backend queries SQLite with a fuzzy LIKE match and returns all candidates
-- Fighter selection sets an active_fighter ID on the server — the Pi polls for changes
-- A stats_map dictionary maps raw scraped labels to database column names
-- A purify_stats() function handles all type conversion: height→inches, weight→lbs int, percentages→int, dates→ISO 8601, "--"→None
+- A spider crawls ufcstats.com alphabetically, catalogs every profile link, and seeds a local SQLite database
+- ufcstats.com sits behind Cloudflare, so the scraping runs through Playwright (a headless browser) to get past the challenge instead of plain requests
+- On a name search the backend queries SQLite with a fuzzy LIKE match and returns all the candidates
+- Picking a fighter sets an active_fighter ID on the server — the Pi polls for changes
+- A stats_map dictionary maps the messy scraped labels to clean database column names
+- A purify_stats() function handles all the type conversion: height→inches, weight→lbs int, percentages→int, dates→ISO 8601, "--"→None
+
+### Fighter images
+- Portraits aren't on ufcstats.com, so they get pulled from ufc.com/athlete pages instead
+- Fighter names get turned into a URL slug (accents and punctuation stripped, spaces to hyphens) to find their athlete page
+- The image URL carries a token so it can't be guessed — the page has to be loaded and the URL pulled out of it
+- Images save as images/{fighterid}.png. Fighters with no ufc.com page just fall back to a default portrait
 
 ### Live stats pipeline
-- Uses `ufc.com/events` to discover the current event dynamicly 
-- Polls the UFC's cloudfront CDN for round by round results 
-- Falls back to upcoming event card when no fight is active
+- Uses ufc.com/events to discover the current event dynamically
+- Polls UFC's Cloudfront CDN for round by round results
+- Falls back to the upcoming event card when no fight is active
 
 ### Caching / Updates
 Two cases handled on every lookup:
-- **Cold miss** — triggers find_by_name() — fetches the correct alphabetical page, matches by normalized name, scrapes and caches the fighter
-- **Warm hit** — data is fresh → return from SQLite instantly
-- A weekly cron job can be configured to run every Sunday morning (python main.py -u) to refresh stats for fighters who competed the previous Saturday night
+- **Cold miss** — triggers find_by_name(), which fetches the correct alphabetical page, matches by normalized name, scrapes and caches the fighter
+- **Warm hit** — data is already there → return from SQLite instantly
+- A weekly cron job can be set up to run every Sunday morning (python main.py -u) to refresh stats for whoever fought the previous Saturday night
 
+## Command Line Flags
 
-### API Endpoints
+The backend runs through main.py. On first run with an empty database it kicks off a full scrape automatically (this takes a while — a few hours — because it throttles requests on purpose). After that, these flags control the maintenance jobs:
+
+| Flag | Long form | What it does |
+| ---- | --------- | ------------ |
+| `-u` | `--update` | Scrapes stats for every fighter on the most recent completed event. Meant for the weekly Sunday cron so records stay current after fight night. |
+| `-i` | `--images` | Downloads fighter portraits from ufc.com for everyone in the database. Skips anyone already downloaded, so it's safe to rerun and safe to cancel partway through. |
+
+Running with no flags just initializes the database and starts the Flask server. Flags can be combined (e.g. `python main.py -u -i`), and any run starts the server afterward.
+
+## API Endpoints
 | Method | Endpoint | Description |
 | ------------- | ------------- |-------------|
 | GET  | /  | Fighter search web UI |
-| GET  | /fighters?name={name}  | Search fighters by name, returns a list|
+| GET  | /fighters?name={name}  | Search fighters by name, returns a list |
 | GET  | /current  | Returns active fighter ID (Pi polls this) |
-| GET  | /fighter?id={fighterid}  | Full stats for a specific fighter & sets the currently displayed fighter|
+| GET  | /fighter?id={fighterid}  | Full stats for a specific fighter, and sets the currently displayed fighter |
 | GET  | /live  | Current live fight round stats |
 | GET  | /upcoming  | Next event fight card |
 
-
-
-## Setup 
+## Setup
 
 ### Prerequisites
-* pip install -r requirements.txt
-* playwright install chromium
+```
+pip install -r requirements.txt
+playwright install chromium
+```
+
+Note: `playwright install chromium` is not optional. Installing the playwright package alone doesn't grab the browser it needs, and the scraper will fail without it.
