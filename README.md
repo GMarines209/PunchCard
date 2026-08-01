@@ -6,6 +6,8 @@ and renders it onto a small color display. You pick a fighter from a web page on
 
 > 🚧 **This is currently in active development** — backend pipeline is done, image download works, Pi client & live stats are in progress
 
+> quick disclosure: the web dashboard (index.html) was AI generated, frontend isn't my focus and I just dont really enjoy it as much. The backend, scraping, database, and Pi client are my own work.
+
 ## Features
 
 **Fighter stats mode** - search any UFC fighter by name and have their info (portrait, record, and career stats) shown on the display.
