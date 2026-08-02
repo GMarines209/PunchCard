@@ -1,6 +1,8 @@
 from flask import Flask, jsonify, request
 from flask import render_template
 import cache
+from flask import send_from_directory, abort
+import string
 
 app = Flask(__name__)
 active_fighter = None
@@ -48,3 +50,16 @@ def fighters_list():
         return jsonify({"error": "No fighter URL found"}), 404
 
     return jsonify(names)
+
+@app.route("/images/<fighterid>")
+def serve_image(fighterid):
+    fid = fighterid.removesuffix(".png")
+    if(fid == "default"):
+        return send_from_directory("images", f"{fid}.png")
+    try:
+        int(fid, 16)
+    except ValueError:
+        abort(404)
+    if len(fid) != 16:
+        abort(404)
+    return send_from_directory("images", f"{fid}.png")
