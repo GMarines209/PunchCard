@@ -1,4 +1,5 @@
 .venv
 __pycache__
 fighters.db
-images
+*.png
+!default.png
