@@ -19,7 +19,7 @@ def strip_name(name):
 
 def image_download(name,fighterid):
     try:
-        r = requests.get(f"https://www.ufc.com/athlete/{name}")
+        r = requests.get(f"https://www.ufc.com/athlete/{name}" , timeout=15)
     except Exception as e:
         print(e)
         return 
@@ -32,7 +32,7 @@ def image_download(name,fighterid):
     image_url = image['src']
 
     try:
-        r = requests.get(image_url)
+        r = requests.get(image_url, timeout=15)
     except Exception as e:
         print(e)
         return 
