@@ -16,8 +16,8 @@ def handle_search(fighter_name):
         url = spider.find_by_name(fighter_name)
         if(url == None):
             return []
-        stats = scraper.get_fighter_stats(url)
-        database.save_complete_fighter(stats)
+        stats = scraper.scrape_all([url]) # update the parameters 
+        database.save_complete_fighter(stats[0])
         names = database.search_fighters(fighter_name)
 
     return names

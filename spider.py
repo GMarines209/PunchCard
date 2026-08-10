@@ -32,8 +32,7 @@ def alpha_crawl():
 
         browser.close()
 
-    for link in fighter_links:
-        yield link
+    return fighter_links
 
 def event_scan():
 

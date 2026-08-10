@@ -13,11 +13,11 @@ def index():
 
 @app.route("/live") 
 def live_results():
-    return
+    return 0
 
-@app.route("/upcomming")
-def upcomming():
-    return
+@app.route("/upcoming")
+def upcoming():
+    return 0
 
 @app.route("/current")
 def current():

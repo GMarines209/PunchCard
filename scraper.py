@@ -2,6 +2,7 @@ from bs4 import BeautifulSoup
 import datetime
 from playwright.sync_api import sync_playwright
 import nest_asyncio
+import database
 
 # stops playwright from fighting with Flask for the event loop
 nest_asyncio.apply()
@@ -30,31 +31,52 @@ def safe_extract(soup, css_selector):
         return element.text.strip()
     return "N/A"
 
-def get_fighter_stats(url):
+
+def scrape_all(links):
+    count = 1
+    stats = []
+
+
+    with sync_playwright() as p:
+            browser = p.chromium.launch(headless=True)
+            page = browser.new_page()
+            # loop from main ===================
+            for link in links:
+                page.goto(link)
+                try:
+                    # Wait for the fighter name to pass cloudflare 
+                    page.wait_for_selector(".b-content__title-highlight", timeout=15000)
+                except Exception:
+                    print(f"DEBUG: Timeout/Blocked on {link}")
+                    continue 
+                
+                html = page.content()
+                soup = BeautifulSoup(html, 'html.parser')
+
+                print(f"[{count}] Fetching: {link}")
+                count += 1
+                try:
+                    clean_stats = get_fighter_stats(link,soup)  
+                    fighter_name = clean_stats.get("name", "Unknown Fighter")
+                    print(f"    -> Saving {fighter_name} to database...")
+                    stats.append(clean_stats)
+                except Exception as e:
+                    # error handeling stuff
+                    print(f"    -> [!] FAILED to scrape {link}. Error: {e}")
+                    continue # skips the rest of this loop and moves to the next URL
+
+                
+
+            browser.close()
+            return  stats
+
+def get_fighter_stats(url,soup):
     clean_stats = {}
     messy_stats = {}
 
     url_array = url.split("/")
     fighter_id = url_array[-1]
     clean_stats["fighterid"] = fighter_id
-
-    with sync_playwright() as p:
-        browser = p.chromium.launch(headless=True)
-        page = browser.new_page()
-        page.goto(url)
-        
-        try:
-            # Wait for the fighter name to pass cloudflare 
-            page.wait_for_selector(".b-content__title-highlight", timeout=15000)
-        except Exception:
-            print(f"DEBUG: Timeout/Blocked on {url}")
-            browser.close()
-            return None 
-
-        html = page.content()
-        soup = BeautifulSoup(html, 'html.parser')
-        browser.close()
-
 
     # fighter name
     name = safe_extract(soup, ".b-content__title-highlight")
@@ -109,7 +131,7 @@ def get_fighter_stats(url):
 def purify_stats(clean_stats):
 
     for key in clean_stats:
-        if clean_stats[key] == "--" or clean_stats[key] == "N/A":
+        if clean_stats[key] == "--" or clean_stats[key] == "N/A" or clean_stats[key] == "":
             clean_stats[key] = None
 
     # removes % signs
