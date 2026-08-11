@@ -1,8 +1,7 @@
 from flask import Flask, jsonify, request
 from flask import render_template
-import cache
+import cache, database
 from flask import send_from_directory, abort
-import string
 
 app = Flask(__name__)
 active_fighter = None
@@ -45,11 +44,17 @@ def fighters_list():
     fighter_name = request.args.get("name")
     if not fighter_name:
         return jsonify({"error": "Missing 'name' parameter"}), 400
-    names = cache.handle_search(fighter_name)
-    if names is None:
-        return jsonify({"error": "No fighter URL found"}), 404
+    names = database.search_fighters(fighter_name)
 
     return jsonify(names)
+
+@app.route("/fighters/deep")
+def deep_search():
+    fighter_name = request.args.get("name")
+    if not fighter_name:
+        return jsonify({"error": "Missing 'name' parameter"}), 400
+    names = cache.handle_deep_search(fighter_name)
+    return jsonify(names) 
 
 @app.route("/images/<fighterid>")
 def serve_image(fighterid):

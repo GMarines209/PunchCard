@@ -79,7 +79,7 @@ Two cases handled on every lookup:
 
 ## Command Line Flags
 
-The backend runs through main.py. On first run with an empty database it kicks off a full scrape automatically (this takes a while — a few hours — because it throttles requests on purpose). After that, these flags control the maintenance jobs:
+The backend runs through main.py. On first run with an empty database it kicks off a full scrape automatically (this takes a few hours because it throttles requests on purpose). After that, these flags control the maintenance jobs:
 
 | Flag | Long form | What it does |
 | ---- | --------- | ------------ |
@@ -107,3 +107,8 @@ playwright install chromium
 ```
 
 Note: `playwright install chromium` is not optional. Installing the playwright package alone doesn't grab the browser it needs, and the scraper will fail without it.
+
+## Future updates / features
+* Once im done with everything to do with the pi and display, I plan to train a ML model on all these stats and see if i can get 
+some predictions going  
+

@@ -18,6 +18,7 @@ def strip_name(name):
 
 
 def image_download(name,fighterid):
+    sleep(uniform(1, 3))
     try:
         r = requests.get(f"https://www.ufc.com/athlete/{name}" , timeout=15)
     except Exception as e:
@@ -40,5 +41,4 @@ def image_download(name,fighterid):
     with open(f"images/{fighterid}.png", 'wb') as f:
         f.write(r.content)
 
-    sleep(uniform(1, 3))
     return 1

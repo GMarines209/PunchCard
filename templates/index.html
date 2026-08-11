@@ -93,6 +93,23 @@
   .result .r-meta .rec{color:var(--ink)}
 
   .hint,.empty{color:var(--ink-faint);font-size:13px;margin-top:16px;line-height:1.5}
+  .hidden{display:none!important}
+
+  /* ---- deep search (explicit UFC.com lookup) --------------------------- */
+  .deep{
+    margin-top:16px;background:var(--panel);border:1px solid var(--line);
+    border-radius:10px;padding:14px;
+  }
+  .deep-msg{color:var(--ink-dim);font-size:13px;line-height:1.5;margin-bottom:10px}
+  .deep-btn{
+    width:100%;background:transparent;border:1px solid var(--accent);color:var(--accent-ink);
+    padding:10px 14px;border-radius:8px;font-weight:700;letter-spacing:.04em;
+    cursor:pointer;font-size:13px;
+  }
+  .deep-btn:hover{background:rgba(210,10,10,.08)}
+  .deep-btn:disabled{opacity:.5;cursor:not-allowed;filter:none}
+  .deep-note{color:var(--ink-faint);font-size:11px;line-height:1.5;margin-top:10px}
+  .deep-status{color:var(--ink-dim);font-size:13px;margin-top:10px;line-height:1.5}
 
   /* ---- fighter card ----------------------------------------------------- */
   .card{
@@ -173,6 +190,12 @@
       </div>
       <div id="results" class="results"></div>
       <div id="hint" class="hint">Type a fighter's name and hit search. Pick a result to load their card.</div>
+      <div id="deep" class="deep hidden">
+        <div class="deep-msg">No fighter by that name in the local database.</div>
+        <button id="deepBtn" class="deep-btn">Look up on UFC.com</button>
+        <div class="deep-note">Only finds correctly-spelled fighters not yet cached — it won't fix typos.</div>
+        <div id="deepStatus" class="deep-status"></div>
+      </div>
     </div>
 
     <!-- card ---------------------------------------------------------- -->
@@ -205,6 +228,16 @@ const hintEl    = document.getElementById("hint");
 const cardEl    = document.getElementById("card");
 
 let activeId = null;
+
+/* deep search (explicit UFC.com lookup) ----------------------------------- */
+const deepEl       = document.getElementById("deep");
+const deepBtnEl    = document.getElementById("deepBtn");
+const deepStatusEl = document.getElementById("deepStatus");
+
+const DEEP_COOLDOWN_MS = 30000;   // 30s between deep searches
+const DEEP_MAX_PER_SESSION = 5;   // polite gate so a demo crowd can't hammer the scraper
+let deepLastUsed = 0;
+let deepCount = 0;
 
 /* format helpers ---------------------------------------------------------- */
 function record(f){
@@ -242,6 +275,7 @@ function esc(s){
 async function search(){
   const term = qEl.value.trim();
   if (!term){ return; }
+  hideDeep();
   hintEl.textContent = "Searching…";
   resultsEl.innerHTML = "";
   try{
@@ -259,9 +293,11 @@ async function search(){
 function renderResults(list){
   resultsEl.innerHTML = "";
   if (!list.length){
-    hintEl.textContent = "No fighters matched that name.";
+    hintEl.textContent = "No fighters matched that name in the local database.";
+    showDeep();
     return;
   }
+  hideDeep();
   hintEl.textContent = `${list.length} result${list.length>1?"s":""}.`;
   for (const f of list){
     const btn = document.createElement("button");
@@ -276,6 +312,65 @@ function renderResults(list){
     btn.addEventListener("click", () => selectFighter(f.fighterid, btn));
     resultsEl.appendChild(btn);
   }
+}
+
+/* deep search — explicit UFC.com lookup ----------------------------------- */
+function showDeep(){
+  deepEl.classList.remove("hidden");
+  deepStatusEl.textContent = "";
+  updateDeepBtn();
+}
+function hideDeep(){
+  deepEl.classList.add("hidden");
+}
+function updateDeepBtn(){
+  const now = Date.now();
+  const cooling = now < deepLastUsed + DEEP_COOLDOWN_MS;
+  const capped = deepCount >= DEEP_MAX_PER_SESSION;
+  deepBtnEl.disabled = cooling || capped;
+  if (capped){
+    deepStatusEl.textContent = "Deep search limit reached for this session.";
+  } else if (cooling){
+    const secs = Math.ceil((deepLastUsed + DEEP_COOLDOWN_MS - now) / 1000);
+    deepStatusEl.textContent = `Try again in ${secs}s.`;
+  } else {
+    deepStatusEl.textContent = "";
+  }
+}
+async function deepSearch(){
+  const term = qEl.value.trim();
+  if (!term || deepBtnEl.disabled) return;
+  deepBtnEl.disabled = true;
+  deepStatusEl.textContent = "Searching UFC.com… (few seconds)";
+  try{
+    const res = await fetch(`/fighters/deep?name=${encodeURIComponent(term)}`);
+    if (res.status === 404){
+      // deep miss — no fighter by that name on UFC.com
+      deepLastUsed = Date.now();
+      deepCount++;
+      deepStatusEl.textContent = "No fighter by that name on UFC.com — check spelling.";
+      updateDeepBtn();
+      return;
+    }
+    if (!res.ok) throw new Error(res.status);
+    let data = await res.json();
+    if (!Array.isArray(data)) data = data ? [data] : [];
+    // successful round-trip — now it counts against the cooldown/cap
+    deepLastUsed = Date.now();
+    deepCount++;
+    if (data.length){
+      // deep hit — fighter cached, show it
+      hideDeep();
+      renderResults(data);
+    } else {
+      // deep miss
+      deepStatusEl.textContent = "No fighter by that name on UFC.com — check spelling.";
+    }
+  }catch(err){
+    // transient failure — don't burn the cooldown/cap
+    deepStatusEl.textContent = "Couldn't reach the server. Is the backend running?";
+  }
+  updateDeepBtn();
 }
 
 /* load one fighter -------------------------------------------------------- */
@@ -345,6 +440,7 @@ function renderCard(f){
 /* wiring ------------------------------------------------------------------ */
 goEl.addEventListener("click", search);
 qEl.addEventListener("keydown", e => { if (e.key === "Enter") search(); });
+deepBtnEl.addEventListener("click", deepSearch);
 qEl.focus();
 </script>
 </body>

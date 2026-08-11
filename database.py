@@ -1,5 +1,6 @@
 import sqlite3 
 import datetime
+import rapidfuzz
 
 DB_FILENAME = 'fighters.db'
 
@@ -78,14 +79,38 @@ def search_fighters(fighter_name):
     conn = get_connection()
     c = conn.cursor()
 
+    # first try old method which is more broad but doesnt cover misspelled words 
     search_term = f"%{fighter_name.lower()}%"
     c.execute("""SELECT * FROM fighters 
               INNER JOIN fighter_stats ON fighters.fighterid = fighter_stats.trackfighter
               WHERE LOWER(fighters.name) LIKE ? """,(search_term,))
     names = c.fetchall()
 
+    if([dict(row) for row in names] != []):
+        conn.close()
+        return [dict(row) for row in names]
+
+    # if first method doesnt work go to the more precice fuzzy matching that should catch misspelled words 
+    c.execute("SELECT fighterid, name FROM fighters")
+    all_fighters = c.fetchall()
+    choices = [row["name"] for row in all_fighters]
+    matches = rapidfuzz.process.extract(
+        query=fighter_name,
+        choices=choices,
+        limit=10,
+        score_cutoff=75
+    )
+
+    results = []
+    for match, score, index in matches:
+        fighter_id = all_fighters[index]["fighterid"]
+        stats = get_fighter_by_id(fighter_id)
+        if stats:
+            results.append(stats)
+
+
     conn.close()
-    return [dict(row) for row in names]
+    return results
 
 # used by main to get all fighter names and id's for download_portrait
 def get_all_fighters():

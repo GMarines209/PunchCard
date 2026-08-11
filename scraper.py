@@ -31,7 +31,6 @@ def safe_extract(soup, css_selector):
         return element.text.strip()
     return "N/A"
 
-
 def scrape_all(links):
     count = 1
     stats = []
@@ -68,7 +67,7 @@ def scrape_all(links):
                 
 
             browser.close()
-            return  stats
+            return stats
 
 def get_fighter_stats(url,soup):
     clean_stats = {}
