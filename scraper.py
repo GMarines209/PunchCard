@@ -2,7 +2,6 @@ from bs4 import BeautifulSoup
 import datetime
 from playwright.sync_api import sync_playwright
 import nest_asyncio
-import database
 
 # stops playwright from fighting with Flask for the event loop
 nest_asyncio.apply()

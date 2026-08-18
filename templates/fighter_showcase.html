@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PunchCard · Pi fighter showcase screen</title>
+<style>
+    @font-face {
+        font-family: "Sternbach";
+        src: url("/static/fonts/Sternbach Bold Italic.otf");
+        font-weight: bold;
+        font-style: italic;
+    }
+  :root{
+    --frame:        #A32D2D;   /* card edge */
+    --frame-dark:   #79201f;   /* inside border */
+    --card-bg:      #111214;   /* screen background */
+    --panel:        #1b1c1e;   /* every panel surface */
+    --portrait-bg:  #0c0d0f;   /* portrait backing */
+    --plate:        #f4f4f4;   /* white name plate */
+    --plate-ink:    #111111;   /* text on the white plate */
+    --text:         #f4f4f4;   /* primary text */
+    --text-muted:   #8a8a8a;   /* tile labels */
+    --text-dim:     #888888;   /* small result text */
+    --label:        #E24B4A;   /* red sub labels */
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{
+    background:#0a0b0d;
+    color:var(--text);
+    font-family:Cambria, Cochin, Georgia, Times, 'Times New Roman', serif;
+    -webkit-font-smoothing:antialiased;
+    min-height:100vh;
+    display:flex;flex-direction:column;align-items:center;gap:18px;
+    padding:28px 12px 40px;
+  }
+  .stage{
+    width:480px;height:640px;      /* double the resolution for easy view on monitor */
+    background:var(--card-bg);
+    border:1px solid #2a2b2d;border-radius:10px;
+    padding:0;position:relative;overflow:hidden;
+  }
+  /* Pi render mode — true 240x320, no 2x scale (set via ?view=pi) */
+  body.pi .stage{ width:240px;height:320px;border:none;border-radius:0; }
+  body.pi .screen{ transform:none; }
+  body.pi .caption{ display:none; }
+  .caption{color:#8a8a8a;font-size:12px;letter-spacing:.08em;max-width:480px;text-align:center;line-height:1.6}
+  .caption code{color:var(--label);font-family:inherit}
+
+
+  /* ========================Screen design stuff ================================== */
+    .screen{
+        transform:scale(2);
+        transform-origin:top left;
+        width:240px;height:320px;
+        background:var(--card-bg);
+        border:3px solid var(--frame);      
+        border-radius:8px;                  
+        display:flex;flex-direction:column; 
+        gap:6px;                            
+        padding:6px;
+        overflow:hidden;
+    }
+  /* ======================== fighter portrait things  ================================== */
+    .header{
+        text-align: center;
+        border: 1px solid var(--frame-dark);
+        background: var(--card-bg);
+        flex: none;
+        padding: 4px;
+    }
+    .header .word{
+        font-family: "Sternbach","Segoe UI",system-ui,sans-serif;
+        font-size:18px;font-weight:bold;font-style:italic;letter-spacing:1px;
+    }
+    .header .div{
+        color: var(--label);
+        font-size:7px;letter-spacing:4px;text-transform:uppercase;
+    }
+
+    .portrait{
+        flex:1;                            
+        min-height:0;background:var(--portrait-bg);border:2px solid var(--frame-dark);
+        border-radius:6px; position:relative;overflow:hidden;
+        display:flex;align-items:flex-end;justify-content:center;
+    }
+    .portrait .image{
+        position:absolute;inset:0;width:100%;height:100%;
+        object-fit:cover;object-position:top center;
+    }
+
+    .nameplate{
+        text-align: center;
+        background: var(--plate);       /* A3 — the white anchor */
+        border-radius: 5px;
+        flex: none;
+        padding: 5px 6px;
+    }
+    .nameplate .name{
+        color: var(--plate-ink);        /* dark text on the white plate */
+        font-size:16px;font-weight:500;letter-spacing:1px;text-transform:uppercase;
+    }
+    .nameplate .nickname{
+        color: var(--frame);            /* maroon sub-line */
+        font-size:6px;letter-spacing:1px;text-transform:uppercase;
+    }
+
+    .record{
+        text-align: center;
+        background: var(--panel);       /* A10 — the recipe */
+        border-radius: 5px;
+        flex: none;
+        padding: 5px 6px;
+    }
+    .record .u{
+        color:var(--text-muted);
+        font-size:6px;letter-spacing:1px;text-transform:uppercase;
+    }
+    .record .l{
+        color:var(--text);
+        font-size:13px;font-weight:500;margin-top:2px;
+    }
+
+    .stats_grid{
+        display:grid;
+        grid-template-columns:1fr 1fr;
+        gap:5px;
+        flex:none;
+    }
+    .stats{
+        display:flex;justify-content:space-between;  
+        align-items:center;
+        background:var(--panel);
+        border-radius:4px;
+        padding:5px 8px;
+    }
+    .stats .tag{
+        color:var(--label);font-size:7px;letter-spacing:1px;text-transform:uppercase
+    }
+    .stats .info{
+        color:#eee;font-size:9px;font-weight:500
+    }
+</style>
+</head>
+<body class="{% if pi %}pi{% endif %}">
+    <div class = "stage">
+        <div class = "screen">
+            <div class="header">
+                <div class = "word"> UFC </div>
+                <div class = "div"> {{ fighter.weightclass }} </div>
+            </div>
+
+            <div class="portrait">
+                <img class="image" src="/images/{{ fighter.fighterid }}.png" alt="{{ fighter.name }}" onerror="this.style.display='none'">
+            </div>
+
+            <div class="nameplate">
+                <div class="name"> {{ fighter.name }} </div>
+                <div class = "nickname">{% if fighter.nickname %}&ldquo;{{ fighter.nickname }}&rdquo;{% else %}&mdash;{% endif %} </div>
+            </div>
+
+            <div class="record">
+                <div class="u"> Record </div>
+                <div class="l">{{ fighter.wins }}-{{ fighter.losses }}-{{ fighter.draws }}</div>
+            </div>
+
+
+            <div class="stats_grid">
+                {% if stat_page == 'striking' %}
+                <!-- striking stats -->
+                <div class="stats">
+                    <span class="tag">Sig. Str/min</span>
+                    <span class="info">{% if fighter.SLpM is not none %}{{ fighter.SLpM }}{% else %}N/A{% endif %}</span>
+                </div>
+                <div class="stats">
+                    <span class="tag">Str. Acc</span>
+                    <span class="info">{% if fighter.StrAcc is not none %}{{ fighter.StrAcc }}%{% else %}N/A{% endif %}</span>
+                </div>
+                <div class="stats">
+                    <span class="tag">Str. Abs/min</span>
+                    <span class="info">{% if fighter.SApM is not none %}{{ fighter.SApM }}{% else %}N/A{% endif %}</span>
+                </div>
+                <div class="stats">
+                    <span class="tag">Str. Def</span>
+                    <span class="info">{% if fighter.StrDef is not none %}{{ fighter.StrDef }}%{% else %}N/A{% endif %}</span>
+                </div>
+                {% elif stat_page == 'grappling' %}
+                <!-- grappling stats -->
+                <div class="stats">
+                    <span class="tag">Td / 15min</span>
+                    <span class="info">{% if fighter.TdAvg is not none %}{{ fighter.TdAvg }}{% else %}N/A{% endif %}</span>
+                </div>
+                <div class="stats">
+                    <span class="tag">Td Acc</span>
+                    <span class="info">{% if fighter.TdAcc is not none %}{{ fighter.TdAcc }}%{% else %}N/A{% endif %}</span>
+                </div>
+                <div class="stats">
+                    <span class="tag">Td Def</span>
+                    <span class="info">{% if fighter.TdDef is not none %}{{ fighter.TdDef }}%{% else %}N/A{% endif %}</span>
+                </div>
+                <div class="stats">
+                    <span class="tag">Sub / 15min</span>
+                    <span class="info">{% if fighter.SubAvg is not none %}{{ fighter.SubAvg }}{% else %}N/A{% endif %}</span>
+                </div>
+                {% else %}
+                <!-- physical stats -->
+                <div class="stats">
+                    <span class="tag">Age</span>
+                    <span class="info">{{ fighter.age }}</span>
+                </div>
+                <div class="stats">
+                    <span class="tag">Height</span>
+                    <span class="info">{{ fighter.height }}</span>
+                </div>
+                <div class="stats">
+                    <span class="tag">Reach</span>
+                    <span class="info">{% if fighter.reach %}{{ fighter.reach }}"{% else %}N/A{% endif %}</span>
+                </div>
+                <div class="stats">
+                    <span class="tag">Stance</span>
+                    <span class="info">{% if fighter.stance %}{{ fighter.stance }}{% else %}N/A{% endif %}</span>
+                </div>
+                {% endif %}
+            </div>
+
+        </div>
+    </div>
+</body>
+</html>

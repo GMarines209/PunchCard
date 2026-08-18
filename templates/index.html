@@ -167,6 +167,21 @@
   .stat .val{font-size:16px;font-weight:700}
   .stat .val .u{color:var(--ink-faint);font-size:11px;font-weight:500;margin-left:2px}
 
+  /* ---- display-on-Pi bar ------------------------------------------------ */
+  .display-bar{
+    padding:16px 24px;border-top:1px solid var(--line);
+    display:flex;align-items:center;justify-content:space-between;gap:12px;
+  }
+  .display-bar .msg{color:var(--ink-dim);font-size:13px;line-height:1.4}
+  .display-btn{
+    background:var(--accent);color:#fff;border:none;padding:12px 20px;border-radius:8px;
+    font-weight:700;letter-spacing:.04em;cursor:pointer;font-size:14px;flex:none;
+  }
+  .display-btn:hover{filter:brightness(1.1)}
+  .display-btn:active{transform:translateY(1px)}
+  .display-btn:disabled{opacity:.5;cursor:not-allowed;filter:none}
+  .display-status{color:var(--win);font-size:12px;margin-top:8px}
+
   footer{
     text-align:center;color:var(--ink-faint);font-size:11px;line-height:1.6;
     padding:24px;border-top:1px solid var(--line);
@@ -434,13 +449,44 @@ function renderCard(f){
         ${statRow("Takedown defense", f.TdDef, "%")}
         ${statRow("Submissions / 15 min", f.SubAvg)}
       </div>
+    </div>
+
+    <div class="display-bar">
+      <div>
+        <div class="msg">Send this fighter to the Pi display?</div>
+        <div id="displayStatus" class="display-status"></div>
+      </div>
+      <button id="displayBtn" class="display-btn">Display on Pi</button>
     </div>`;
+}
+
+/* display on Pi ------------------------------------------------------------ */
+async function displayOnPi(){
+  const btn = document.getElementById("displayBtn");
+  const status = document.getElementById("displayStatus");
+  if (!activeId || btn.disabled) return;
+  btn.disabled = true;
+  status.textContent = "Sending to Pi…";
+  try{
+    const res = await fetch(`/display?id=${encodeURIComponent(activeId)}`);
+    if (!res.ok) throw new Error(res.status);
+    const data = await res.json();
+    status.textContent = data.success
+      ? `Now displaying ${data.name} on the Pi.`
+      : "Couldn't send to the Pi.";
+  }catch(err){
+    status.textContent = "Couldn't reach the server. Is the backend running?";
+  }
+  btn.disabled = false;
 }
 
 /* wiring ------------------------------------------------------------------ */
 goEl.addEventListener("click", search);
 qEl.addEventListener("keydown", e => { if (e.key === "Enter") search(); });
 deepBtnEl.addEventListener("click", deepSearch);
+cardEl.addEventListener("click", e => {
+  if (e.target && e.target.id === "displayBtn") displayOnPi();
+});
 qEl.focus();
 </script>
 </body>
