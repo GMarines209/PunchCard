@@ -4,7 +4,7 @@ This project is a self-hosted UFC stats display built on a Raspberry Pi Zero 2W 
 The python backend scrapes all historical fighter data plus live event results, serves it through a REST API,
 and renders it onto a small color display. You pick a fighter from a web page on your phone and it shows up on the screen.
 
-> 🚧 **This is currently in active development** — backend pipeline is done, image download works, Pi client & live stats are in progress
+> 🚧 **This is currently in active development** — pi fighter showcase rendering complete, awaiting hardware testing. Live stats planned next 
 
 > quick disclosure: the web dashboard (index.html) was AI generated, frontend isn't my focus and I just dont really enjoy it as much. The backend, scraping, database, and Pi client are my own work.
 
@@ -12,9 +12,9 @@ and renders it onto a small color display. You pick a fighter from a web page on
 
 **Fighter stats mode** - search any UFC fighter by name and have their info (portrait, record, and career stats) shown on the display.
 
-**Live fight mode** - during active UFC events the display updates round by round with live stats for both fighters, pulled straight from UFC's CDN.
+**Live fight mode** -  (IN PROGRESS) during active UFC events the display updates round by round with live stats for both fighters, pulled straight from UFC's CDN.
 
-**Upcoming card mode** - when nothing is live, the display falls back to the upcoming event's fight card.
+**Upcoming card mode** -  (IN PROGRESS) when nothing is live, the display falls back to the upcoming event's fight card.
 
 ## Demo
 
@@ -31,7 +31,7 @@ and renders it onto a small color display. You pick a fighter from a web page on
            [Python Backend — Docker on home server]
                                 ↓
                          [SQLite Database]
-                       (4000+ fighters cached)
+                       (4500+ fighters cached)
                                 ↓
                          [REST API (Flask)]
                                 ↓
@@ -48,14 +48,14 @@ and renders it onto a small color display. You pick a fighter from a web page on
 2. Search a fighter by name — matching results show up with identifying info (nickname, record, weight class)
 3. Pick the right one, their ID gets set as active on the server
 4. The Pi polls the server every ~5 seconds, notices the change, grabs the full stats and displays them
-5. Switch to live mode during UFC events for round by round updates
+5. (IN PROGRESS) Switch to live mode during UFC events for round by round updates
 
 ## How it works
 
 ### Fighter stats pipeline
 - A spider crawls ufcstats.com alphabetically, catalogs every profile link, and seeds a local SQLite database
 - ufcstats.com sits behind Cloudflare, so the scraping runs through Playwright (a headless browser) to get past the challenge instead of plain requests
-- On a name search the backend queries SQLite with a fuzzy LIKE match and returns all the candidates
+- On a name search the backend queries SQLite with a mix of fuzzy LIKE matching and RapidFuzz, returning all valid candidates
 - Picking a fighter sets an active_fighter ID on the server — the Pi polls for changes
 - A stats_map dictionary maps the messy scraped labels to clean database column names
 - A purify_stats() function handles all the type conversion: height→inches, weight→lbs int, percentages→int, dates→ISO 8601, "--"→None
@@ -66,7 +66,7 @@ and renders it onto a small color display. You pick a fighter from a web page on
 - The image URL carries a token so it can't be guessed — the page has to be loaded and the URL pulled out of it
 - Images save as images/{fighterid}.png. Fighters with no ufc.com page just fall back to a default portrait
 
-### Live stats pipeline
+### Live stats pipeline (IN PROGRESS)
 - Uses ufc.com/events to discover the current event dynamically
 - Polls UFC's Cloudfront CDN for round by round results
 - Falls back to the upcoming event card when no fight is active
@@ -93,10 +93,15 @@ Running with no flags just initializes the database and starts the Flask server.
 | ------------- | ------------- |-------------|
 | GET  | /  | Fighter search web UI |
 | GET  | /fighters?name={name}  | Search fighters by name, returns a list |
-| GET  | /current  | Returns active fighter ID (Pi polls this) |
+| GET  | /fighters/deep?name={name}  | Deep search — scrapes UFC.com if the fighter isn't in the local DB |
 | GET  | /fighter?id={fighterid}  | Full stats for a specific fighter, and sets the currently displayed fighter |
-| GET  | /live  | Current live fight round stats |
-| GET  | /upcoming  | Next event fight card |
+| GET  | /display?id={fighterid}  | Explicitly sets the currently displayed fighter (separate from viewing a card) |
+| GET  | /current  | Returns active fighter ID (Pi polls this) |
+| GET  | /render?id={fighterid}&type={stat_page}&view={pi}  | Serves the showcase template; type=physical/striking/grappling, view=pi disables 2x scale |
+| GET  | /serve?id={fighterid}&page={stat_page}  | Serves the cached showcase PNG for the Pi |
+| GET  | /images/{fighterid}  | Serves a fighter's portrait image |
+| GET  | /live  | Current live fight round stats — **stub, not implemented yet** |
+| GET  | /upcoming  | Next event fight card — **stub, not implemented yet** |
 
 ## Setup
 
@@ -109,6 +114,9 @@ playwright install chromium
 Note: `playwright install chromium` is not optional. Installing the playwright package alone doesn't grab the browser it needs, and the scraper will fail without it.
 
 ## Future updates / features
+* QR code home screen for easier access to the dashboard from the tft screen
+* Offline mode not needing a constant server running the flask server. all resources would be preloaded onto the pi and served locally. 
 * Once im done with everything to do with the pi and display, I plan to train a ML model on all these stats and see if i can get 
-some predictions going  
+some predictions going
+  
 
