@@ -1,6 +1,6 @@
 from flask import Flask, jsonify, request
 from flask import render_template
-import cache, database, utils, render
+import cache, database, utils, render, live
 from flask import send_from_directory, abort
 import glob,os
 
@@ -13,11 +13,13 @@ def index():
 
 @app.route("/live") 
 def live_results():
-    return 0
+    l = live.live()
+    return jsonify(l)
 
 @app.route("/upcoming")
 def upcoming():
-    return 0
+    event_id = live.get_upcomming()
+    return jsonify(event_id)
 
 @app.route("/current")
 def current():
@@ -27,6 +29,7 @@ def current():
 def display_fighter():
     global active_fighter
     fighter_id = request.args.get("id")
+    mode = request.args.get("mode")
 
     if not fighter_id:
         return jsonify({"error": "Missing 'id' parameter"}), 400

@@ -44,6 +44,25 @@
   .brand b{color:var(--accent-ink)}
   .brand-sub{color:var(--ink-faint);font-size:11px;letter-spacing:.28em;text-transform:uppercase}
 
+  /* ---- mode toggle (segmented control in header) ----------------------- */
+  .mode-toggle{
+    margin-left:auto;display:inline-flex;background:var(--panel-2);
+    border:1px solid var(--line);border-radius:9px;padding:3px;gap:3px;
+  }
+  .mode-toggle button{
+    background:transparent;color:var(--ink-dim);border:none;
+    padding:8px 16px;border-radius:6px;font-size:12px;font-weight:700;
+    letter-spacing:.08em;text-transform:uppercase;cursor:pointer;
+  }
+  .mode-toggle button:hover{color:var(--ink);filter:none}
+  .mode-toggle button.active{background:var(--accent);color:#fff}
+  .mode-toggle button.active:hover{filter:brightness(1.1)}
+  @media (max-width:520px){
+    header{flex-wrap:wrap}
+    .mode-toggle{margin-left:0;width:100%}
+    .mode-toggle button{flex:1}
+  }
+
   /* ---- layout ----------------------------------------------------------- */
   .wrap{
     max-width:1000px;margin:0 auto;padding:28px 24px 64px;
@@ -143,6 +162,15 @@
   .record .big{font-size:22px;font-weight:800;letter-spacing:.02em}
   .record .lbl{font-size:10px;letter-spacing:.18em;text-transform:uppercase;color:var(--ink-faint)}
 
+  /* ---- responsive: keep hero + record readable on phones ---------------- */
+  @media (max-width:820px){
+    .hero{grid-template-columns:110px 1fr;gap:14px;padding:18px}
+    .hero img{width:110px;height:150px}
+    .fname{font-size:23px}
+    .record{margin-top:12px;gap:6px;padding:6px 10px;white-space:nowrap}
+    .record .big{font-size:18px}
+  }
+
   .bio{
     display:flex;flex-wrap:wrap;gap:22px;padding:16px 24px;border-bottom:1px solid var(--line);
   }
@@ -182,6 +210,58 @@
   .display-btn:disabled{opacity:.5;cursor:not-allowed;filter:none}
   .display-status{color:var(--win);font-size:12px;margin-top:8px}
 
+  /* ---- live mode -------------------------------------------------------- */
+  .live-wrap{max-width:1000px;margin:0 auto;padding:28px 24px 64px}
+  .live-card{
+    background:var(--panel);border:1px solid var(--line);border-radius:14px;
+    overflow:hidden;
+  }
+  .live-head{
+    padding:20px 24px;border-bottom:1px solid var(--line);
+    background:linear-gradient(180deg,#171c22,#12161b);
+    display:flex;align-items:center;gap:12px;
+  }
+  .live-dot{
+    width:10px;height:10px;border-radius:50%;background:var(--ink-faint);flex:none;
+  }
+  .live-dot.on{background:var(--accent);box-shadow:0 0 0 4px rgba(210,10,10,.18)}
+  .live-title{font-size:15px;font-weight:800;letter-spacing:.04em}
+  .live-sub{color:var(--ink-faint);font-size:12px;margin-top:2px}
+  .live-body{padding:24px}
+  .live-status{
+    color:var(--ink-dim);font-size:14px;line-height:1.6;text-align:center;
+    padding:32px 16px;
+  }
+  .bout{
+    display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:16px;
+    padding:22px 0;border-bottom:1px solid #1a1f26;
+  }
+  .bout:last-child{border-bottom:none}
+  .bout .f{display:flex;flex-direction:column;gap:4px;min-width:0}
+  .bout .f.right{text-align:right}
+  .bout .f .fn{font-weight:800;font-size:19px;line-height:1.15;overflow:hidden;text-overflow:ellipsis}
+  .bout .f .fmeta{color:var(--ink-dim);font-size:14px}
+  .bout .vs{
+    color:var(--accent-ink);font-weight:800;font-style:italic;font-size:16px;
+    letter-spacing:.06em;flex:none;
+  }
+  .bout .wc{
+    grid-column:1 / -1;display:flex;align-items:center;justify-content:center;gap:10px;
+    color:var(--ink-faint);font-size:11px;letter-spacing:.18em;text-transform:uppercase;margin-top:6px;
+  }
+  .bout-status{
+    display:inline-block;padding:3px 10px;border-radius:5px;
+    background:var(--panel-2);border:1px solid var(--line);
+    font-weight:700;letter-spacing:.1em;
+  }
+  .bout-status.live{background:var(--accent);color:#fff;border-color:var(--accent)}
+  .bout.is-live{background:rgba(210,10,10,.06);margin:0 -24px;padding-left:24px;padding-right:24px}
+  .live-tag{
+    display:inline-block;background:var(--accent);color:#fff;font-size:9px;
+    letter-spacing:.12em;text-transform:uppercase;font-weight:700;
+    padding:2px 7px;border-radius:4px;margin-bottom:4px;
+  }
+
   footer{
     text-align:center;color:var(--ink-faint);font-size:11px;line-height:1.6;
     padding:24px;border-top:1px solid var(--line);
@@ -193,9 +273,14 @@
   <header>
     <div class="brand">Punch<b>Card</b></div>
     <div class="brand-sub">UFC fighter database</div>
+    <div class="mode-toggle">
+      <button id="modeShowcase" class="active">Showcase</button>
+      <button id="modeLive">Live</button>
+    </div>
   </header>
 
-  <div class="wrap">
+  <!-- ===== SHOWCASE MODE ===== -->
+  <div id="showcaseView" class="wrap">
     <!-- search -------------------------------------------------------- -->
     <div class="search-panel">
       <div class="eyebrow">Find a fighter</div>
@@ -216,6 +301,32 @@
     <!-- card ---------------------------------------------------------- -->
     <div id="card" class="card">
       <div class="card-empty">No fighter selected.<br>Search on the left and choose a result.</div>
+    </div>
+  </div>
+
+  <!-- ===== LIVE MODE ===== -->
+  <div id="liveView" class="live-wrap hidden">
+    <div class="live-card">
+      <div class="live-head">
+        <span id="liveDot" class="live-dot"></span>
+        <div>
+          <div id="liveTitle" class="live-title">Checking for a live event…</div>
+          <div id="liveSub" class="live-sub"></div>
+        </div>
+        <button id="liveRefresh" class="display-btn" style="margin-left:auto;padding:10px 16px;font-size:13px">Refresh</button>
+      </div>
+      <div class="live-body">
+        <div id="liveContent">
+          <div class="live-status">Loading event status…</div>
+        </div>
+      </div>
+      <div class="display-bar">
+        <div>
+          <div class="msg">Send the live fight tracker to the Pi display?</div>
+          <div id="liveDisplayStatus" class="display-status"></div>
+        </div>
+        <button id="liveDisplayBtn" class="display-btn">Display live on Pi</button>
+      </div>
     </div>
   </div>
 
@@ -278,6 +389,13 @@ function formatDob(iso){
                   "August","September","October","November","December"];
   const month = months[parseInt(m[2],10) - 1];
   return `${month} ${parseInt(m[3],10)}, ${m[1]}`;
+}
+function formatDate(iso){
+  if (!iso) return "";
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return iso;
+  const months = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+  return `${months[d.getMonth()]} ${d.getDate()}, ${d.getFullYear()}`;
 }
 function esc(s){
   // plain-text escape — never inject raw strings as HTML
@@ -480,6 +598,117 @@ async function displayOnPi(){
   btn.disabled = false;
 }
 
+/* ============================ MODE SWITCHING ============================= */
+const showcaseView   = document.getElementById("showcaseView");
+const liveView       = document.getElementById("liveView");
+const modeShowcaseEl = document.getElementById("modeShowcase");
+const modeLiveEl     = document.getElementById("modeLive");
+
+let liveLoaded = false;
+
+function setMode(mode){
+  const live = mode === "live";
+  liveView.classList.toggle("hidden", !live);
+  showcaseView.classList.toggle("hidden", live);
+  modeLiveEl.classList.toggle("active", live);
+  modeShowcaseEl.classList.toggle("active", !live);
+  if (live && !liveLoaded){ loadLive(); }        // fetch on first entry
+  else if (!live){ qEl.focus(); }
+}
+
+/* ============================== LIVE MODE ================================ */
+const liveDotEl      = document.getElementById("liveDot");
+const liveTitleEl    = document.getElementById("liveTitle");
+const liveSubEl      = document.getElementById("liveSub");
+const liveContentEl  = document.getElementById("liveContent");
+
+/* A bout row. Shapes are guarded because the /live + /upcoming JSON isn't
+   finalised yet — anything missing falls back cleanly. */
+function boutRow(b){
+  const a = b.fighter_a || b.red || {};
+  const c = b.fighter_b || b.blue || {};
+  const aName = esc(a.name || b.fighter_a_name || "TBD");
+  const cName = esc(c.name || b.fighter_b_name || "TBD");
+  const wc = b.weightclass || b.weight_class || b.division || "";
+  const isLive = b.status === "live" || b.live === true;
+  // descriptor: LIVE when airing, otherwise the fight's date
+  const statusText = isLive ? "LIVE" : formatDate(b.date || b.start_time || b.CardSegmentStartTime);
+  return `
+    <div class="bout${isLive ? " is-live" : ""}">
+      <div class="f">
+        ${isLive ? '<span class="live-tag">Live</span>' : ""}
+        <div class="fn">${aName}</div>
+        <div class="fmeta">${esc(a.record || b.fighter_a_record || "")}</div>
+      </div>
+      <div class="vs">VS</div>
+      <div class="f right">
+        ${isLive ? '<span class="live-tag">Live</span>' : ""}
+        <div class="fn">${cName}</div>
+        <div class="fmeta">${esc(c.record || b.fighter_b_record || "")}</div>
+      </div>
+      <div class="wc">
+        ${wc ? `<span>${esc(wc)}</span>` : ""}
+        ${statusText ? `<span class="bout-status${isLive ? " live" : ""}">${statusText}</span>` : ""}
+      </div>
+    </div>`;
+}
+
+function renderBouts(list){
+  if (!Array.isArray(list) || !list.length){
+    liveContentEl.innerHTML = `<div class="live-status">No fights available yet — live/upcoming aren't wired to real data right now.</div>`;
+    return;
+  }
+  liveContentEl.innerHTML = list.map(boutRow).join("");
+}
+
+async function loadLive(){
+  liveLoaded = true;
+  liveDotEl.classList.remove("on");
+  liveTitleEl.textContent = "Checking for a live event…";
+  liveSubEl.textContent = "";
+  liveContentEl.innerHTML = `<div class="live-status">Loading event status…</div>`;
+
+  // 1) Is an event live right now?
+  try{
+    const res = await fetch("/live");
+    if (res.ok){
+      const data = await res.json();
+      // Treat a populated, non-"no event" payload as live.
+      const isLive = data && !data.stale && (data.status === "live" || data.live === true || (Array.isArray(data.fights) && data.fights.length && data.event));
+      if (isLive){
+        liveDotEl.classList.add("on");
+        liveTitleEl.textContent = data.name || data.event || "Live event";
+        liveSubEl.textContent = data.location || "Happening now";
+        renderBouts(data.fights || data.card || []);
+        return;
+      }
+    }
+  }catch(err){ /* fall through to upcoming */ }
+
+  // 2) Nothing live — show the upcoming card instead.
+  try{
+    const res = await fetch("/upcoming");
+    if (!res.ok) throw new Error(res.status);
+    const data = await res.json();
+    liveDotEl.classList.remove("on");
+    liveTitleEl.textContent = data.name || data.event || "Next event";
+    liveSubEl.textContent = [data.date, data.location].filter(Boolean).map(esc).join(" · ") || "Upcoming";
+    renderBouts(data.fights || data.card || []);
+  }catch(err){
+    liveTitleEl.textContent = "No event data";
+    liveSubEl.textContent = "";
+    liveContentEl.innerHTML = `<div class="live-status">Couldn't reach the live feed.<br>The backend may be unreachable, or live/upcoming isn't wired up yet.</div>`;
+  }
+}
+
+async function displayLiveOnPi(){
+  const status = document.getElementById("liveDisplayStatus");
+  // The backend has no live-mode endpoint — /display only accepts ?id={fighterid}
+  // for showcase mode, and live.py + /upcoming don't exist yet. Hitting a fake
+  // endpoint would just 404; instead tell the user the truth.
+  status.textContent = "Live mode isn't wired to the backend yet — /display only handles fighters right now. Use Showcase mode to send a fighter to the Pi.";
+}
+
 /* wiring ------------------------------------------------------------------ */
 goEl.addEventListener("click", search);
 qEl.addEventListener("keydown", e => { if (e.key === "Enter") search(); });
@@ -487,6 +716,10 @@ deepBtnEl.addEventListener("click", deepSearch);
 cardEl.addEventListener("click", e => {
   if (e.target && e.target.id === "displayBtn") displayOnPi();
 });
+modeShowcaseEl.addEventListener("click", () => setMode("showcase"));
+modeLiveEl.addEventListener("click", () => setMode("live"));
+document.getElementById("liveRefresh").addEventListener("click", loadLive);
+document.getElementById("liveDisplayBtn").addEventListener("click", displayLiveOnPi);
 qEl.focus();
 </script>
 </body>
